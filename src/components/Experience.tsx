@@ -11,6 +11,7 @@ import DoorsChapter from "./chapters/DoorsChapter";
 import UniverseChapter from "./chapters/UniverseChapter";
 import TreeChapter from "./chapters/TreeChapter";
 import CakeChapter from "./chapters/CakeChapter";
+import LockedGiftChapter from "./chapters/LockedGiftChapter";
 import FinaleChapter from "./chapters/FinaleChapter";
 import KeepsakeChapter from "./chapters/KeepsakeChapter";
 import CouponsChapter from "./chapters/CouponsChapter";
@@ -21,6 +22,7 @@ const VIEWS: Record<ChapterId, React.ComponentType> = {
   doors: DoorsChapter,
   universe: UniverseChapter,
   tree: TreeChapter,
+  lockedgift: LockedGiftChapter,
   cake: CakeChapter,
   finale: FinaleChapter,
   keepsake: KeepsakeChapter,
@@ -33,6 +35,7 @@ const MOODS: Partial<Record<ChapterId, Mood>> = {
   doors: "tender",
   universe: "tender",
   tree: "ambient",
+  lockedgift: "tender",
   cake: "ambient",
   keepsake: "tender",
   coupons: "ambient",

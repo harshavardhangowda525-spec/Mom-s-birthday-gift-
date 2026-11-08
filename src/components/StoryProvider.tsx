@@ -8,6 +8,7 @@ export const CHAPTERS = [
   "doors",
   "universe",
   "tree",
+  "lockedgift",
   "cake",
   "finale",
   "keepsake",

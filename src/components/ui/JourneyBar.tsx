@@ -10,6 +10,7 @@ export const CHAPTER_TITLES: Record<ChapterId, string> = {
   doors: "The Three Magical Doors",
   universe: "The Universe of Memories",
   tree: "The Magical Wishing Tree",
+  lockedgift: "A Gift on Its Way",
   cake: "Make a Wish, Mom",
   finale: "The Grand Finale",
   keepsake: "A Little Piece of Forever",

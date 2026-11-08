@@ -154,7 +154,7 @@ export default function TreeChapter() {
                 <span className="gold-text not-italic font-semibold">All for you.</span>
               </p>
               <motion.button type="button" onClick={next} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }} className="btn-magic mt-6">
-                It’s time for cake
+                One more thing first…
               </motion.button>
             </motion.div>
           )}

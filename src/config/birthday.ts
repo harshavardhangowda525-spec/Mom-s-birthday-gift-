@@ -184,6 +184,18 @@ export const birthday = {
     { icon: "flower", title: "Head Massage & Chai", detail: "A relaxing head massage, followed by chai made by me." },
   ],
 
+  /**
+   * The locked gift: a real present that unlocks on a future date.
+   * The date is in Mom's local time. Before it, the chest stays locked with a countdown.
+   * Preview the unlocked version by adding ?unlock=1 to the site's URL.
+   */
+  lockedGift: {
+    unlockAt: "2026-12-01T00:00:00",
+    unlockLabel: "1 December 2026",
+    unlockedTitle: "It’s time. Come find me",
+    unlockedMessage: "Your real gift is ready, and it’s waiting for you. Go find your son!",
+  },
+
   lanternMessage: "No matter how big I grow, I'll always be your little one.",
 };
 
