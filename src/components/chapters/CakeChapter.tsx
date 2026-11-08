@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { Wind } from "lucide-react";
+import { CakeSlice, Wind } from "lucide-react";
 import Fireworks from "@/components/fx/Fireworks";
 import Confetti from "@/components/fx/Confetti";
 import Petals from "@/components/fx/Petals";
@@ -11,11 +11,28 @@ import { useStory } from "@/components/StoryProvider";
 import { getMusic } from "@/lib/audio";
 import { birthday } from "@/config/birthday";
 
-type Phase = "wish" | "blowing" | "celebrate";
+type Phase = "wish" | "blowing" | "cutReady" | "cutting" | "celebrate";
+
+/* Cut timeline (seconds from tapping "Cut the cake"). Module-level so the
+   animation targets stay referentially stable across phase changes. */
+const CUT_TOTAL = 4.4;
+const KNIFE = {
+  x: [135, 135, 135, 165, 165, 165, 230],
+  y: [-90, 150, -60, -60, 150, -60, -140],
+  rotate: [0, 0, 0, 0, 0, 0, 20],
+  opacity: [0, 1, 1, 1, 1, 1, 0],
+};
+const KNIFE_T = { duration: 2.6, times: [0, 0.2, 0.36, 0.48, 0.66, 0.82, 1], ease: "easeInOut" as const };
+const LEFT = { x: -10 };
+const RIGHT = { x: 10 };
+const PART_T = { delay: 2.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] as const };
+const SLICE = { y: [-110, -170, 0], scale: [0.45, 1, 1], rotate: [0, -8, 0], opacity: [0, 1, 1] };
+const SLICE_T = { delay: 2.5, duration: 1.5, times: [0, 0.45, 1], ease: "easeInOut" as const };
 const CANDLES = [-48, -24, 0, 24, 48];
 
 function Cake({ phase }: { phase: Phase }) {
   const out = phase !== "wish";
+  const cut = phase === "cutting" || phase === "celebrate";
   return (
     <svg viewBox="0 0 300 300" className="h-full w-full overflow-visible" aria-hidden>
       <defs>
@@ -46,6 +63,8 @@ function Cake({ phase }: { phase: Phase }) {
       {/* plate */}
       <ellipse cx="150" cy="268" rx="132" ry="16" fill="url(#gold-band)" />
       <ellipse cx="150" cy="264" rx="124" ry="12" fill="#fff4d8" opacity="0.6" />
+      <defs>
+        <g id="cake-body">
       {/* bottom tier */}
       <rect x="40" y="185" width="220" height="80" rx="12" fill="url(#sponge)" />
       <rect x="40" y="238" width="220" height="7" fill="url(#gold-band)" />
@@ -107,6 +126,94 @@ function Cake({ phase }: { phase: Phase }) {
           )}
         </g>
       ))}
+        </g>
+        <clipPath id="cut-left" clipPathUnits="userSpaceOnUse">
+          <rect x="-50" y="-100" width="185" height="400" />
+        </clipPath>
+        <clipPath id="cut-mid" clipPathUnits="userSpaceOnUse">
+          <rect x="135" y="-100" width="30" height="400" />
+        </clipPath>
+        <clipPath id="cut-right" clipPathUnits="userSpaceOnUse">
+          <rect x="165" y="-100" width="200" height="400" />
+        </clipPath>
+        <linearGradient id="gap-shade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#3a1f2c" stopOpacity="0.45" />
+          <stop offset="35%" stopColor="#3a1f2c" stopOpacity="0" />
+          <stop offset="65%" stopColor="#3a1f2c" stopOpacity="0" />
+          <stop offset="100%" stopColor="#3a1f2c" stopOpacity="0.45" />
+        </linearGradient>
+        <linearGradient id="blade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#c9ccd6" />
+          <stop offset="50%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#9aa0ae" />
+        </linearGradient>
+      </defs>
+
+      {/* dessert plate for the slice */}
+      <motion.g initial={false} animate={{ opacity: cut ? 1 : 0, scale: cut ? 1 : 0.6 }} transition={{ delay: cut ? 2.6 : 0, duration: 0.6 }} style={{ transformOrigin: "150px 304px" }}>
+        <ellipse cx="150" cy="306" rx="58" ry="11" fill="url(#gold-band)" />
+        <ellipse cx="150" cy="303" rx="48" ry="7.5" fill="#fff9f2" />
+      </motion.g>
+
+      <motion.g initial={false} animate={cut ? LEFT : { x: 0 }} transition={cut ? PART_T : { duration: 0 }}>
+        <use href="#cake-body" clipPath="url(#cut-left)" />
+      </motion.g>
+      <motion.g initial={false} animate={cut ? RIGHT : { x: 0 }} transition={cut ? PART_T : { duration: 0 }}>
+        <use href="#cake-body" clipPath="url(#cut-right)" />
+      </motion.g>
+      {/* the cut gap: the inside of the cake */}
+      <motion.g initial={false} animate={{ opacity: cut ? 0 : 1 }} transition={{ delay: cut ? 2.4 : 0, duration: 0.4 }}>
+        <use href="#cake-body" clipPath="url(#cut-mid)" />
+      </motion.g>
+      <motion.g initial={false} animate={{ opacity: cut ? 1 : 0 }} transition={{ delay: cut ? 2.2 : 0, duration: 0.6 }}>
+        <rect x="125" y="121" width="50" height="47" fill="#c97c92" />
+        <rect x="125" y="140" width="50" height="4" fill="#f6dfe4" opacity="0.8" />
+        <rect x="125" y="166" width="50" height="5" fill="url(#gold-band)" />
+        <rect x="125" y="185" width="50" height="80" fill="#c97c92" />
+        {[205, 225].map((y) => (
+          <rect key={y} x="125" y={y} width="50" height="4" fill="#f6dfe4" opacity="0.8" />
+        ))}
+        <rect x="125" y="238" width="50" height="7" fill="url(#gold-band)" />
+        <rect x="125" y="121" width="50" height="144" fill="url(#gap-shade)" />
+      </motion.g>
+
+      {/* the slice lands on the dessert plate */}
+      <g transform="translate(150 300)">
+        <motion.g initial={false} animate={cut ? SLICE : { y: -110, scale: 0.45, rotate: 0, opacity: 0 }} transition={cut ? SLICE_T : { duration: 0 }}>
+          {/* side face with layers */}
+          <path d="M-44 -34 L 34 -34 L 34 0 L -44 0 Z" fill="#f2b9c6" />
+          <rect x="-44" y="-24" width="78" height="4" fill="#fff4f6" />
+          <rect x="-44" y="-13" width="78" height="4" fill="#fff4f6" />
+          <rect x="-44" y="-4" width="78" height="4" fill="url(#gold-band)" />
+          {[-36, -20, -2, 16, 28].map((x, i) => (
+            <circle key={x} cx={x} cy={i % 2 ? -18 : -8} r="1.4" fill="#E8A7B6" />
+          ))}
+          {/* cut end (back) */}
+          <path d="M34 -34 L 46 -46 L 46 -12 L 34 0 Z" fill="#d88fa3" />
+          {/* frosted top */}
+          <path d="M-44 -34 L 34 -34 L 46 -46 Z" fill="url(#frost)" />
+          <path d="M-44 -34 Q -30 -26 -18 -34 Q -6 -26 6 -34 Q 18 -26 34 -34" fill="url(#frost)" />
+          {/* rose + mini candle */}
+          <g transform="translate(22 -40)">
+            <circle r="6" fill="#B9A5D1" />
+            <path d="M-3 0 A3 3 0 1 1 3 0" stroke="#fff" strokeOpacity="0.6" strokeWidth="1" fill="none" />
+          </g>
+          <circle cx="-30" cy="-36" r="2.2" fill="#f3dca8" />
+          <circle cx="0" cy="-36" r="2.2" fill="#f3dca8" />
+        </motion.g>
+      </g>
+
+      {/* the knife */}
+      {cut && (
+        <motion.g initial={{ x: 135, y: -90, opacity: 0 }} animate={KNIFE} transition={KNIFE_T}>
+          <path d="M-5 -6 L 5 -6 L 5 -80 C 5 -86, -5 -86, -5 -80 Z" fill="#7a4a3a" />
+          <path d="M-5 -46 L 5 -46" stroke="#d6b47c" strokeWidth="2" />
+          <path d="M-5 -66 L 5 -66" stroke="#d6b47c" strokeWidth="2" />
+          <rect x="-8" y="-8" width="16" height="5" rx="1.5" fill="url(#gold-band)" />
+          <path d="M-6 -3 L 6 -3 L 6 90 L 0 104 L -6 90 Z" fill="url(#blade)" stroke="#8a8f9c" strokeWidth="0.6" />
+          <path d="M-2 4 L -2 86" stroke="#fff" strokeWidth="1" opacity="0.7" />
+        </motion.g>
+      )}
     </svg>
   );
 }
@@ -124,11 +231,18 @@ export default function CakeChapter() {
     const music = getMusic();
     if (!music.started) music.start();
     setPhase("blowing");
+    timer.current = window.setTimeout(() => setPhase("cutReady"), 2200);
+  };
+
+  const cutCake = () => {
+    if (phase !== "cutReady") return;
+    setPhase("cutting");
     timer.current = window.setTimeout(() => {
       setPhase("celebrate");
+      const music = getMusic();
       music.setMood("celebration");
       music.playBirthdayTune();
-    }, 1300);
+    }, CUT_TOTAL * 1000);
   };
 
   const party = phase === "celebrate";
@@ -189,7 +303,13 @@ export default function CakeChapter() {
 
       <div className="relative z-20 flex min-h-dvh flex-col items-center justify-center px-5 pb-[calc(var(--safe-bottom)+24px)] pt-24 text-center">
         <AnimatePresence mode="wait">
-          {!party ? (
+          {phase === "cutReady" || phase === "cutting" ? (
+            <motion.p key="cut" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 1 }} className="max-w-xs font-serif text-[1.75rem] italic leading-snug text-ivory sm:max-w-md sm:text-4xl">
+              Your wish is on its way ✨
+              <br />
+              <span className="font-hand text-[2.1rem] not-italic text-gold-bright sm:text-5xl">Now, let’s cut the cake!</span>
+            </motion.p>
+          ) : !party ? (
             <motion.p key="wish" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 1.2 }} className="max-w-xs font-serif text-[1.75rem] italic leading-snug text-ivory sm:max-w-md sm:text-4xl">
               Close your eyes, {birthday.momTitle}.
               <br />
@@ -228,6 +348,11 @@ export default function CakeChapter() {
             {phase === "wish" && (
               <motion.button key="blow" type="button" onClick={blow} exit={{ opacity: 0 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="btn-magic">
                 <Wind size={16} /> Blow out the candles
+              </motion.button>
+            )}
+            {phase === "cutReady" && (
+              <motion.button key="cutbtn" type="button" onClick={cutCake} exit={{ opacity: 0 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="btn-magic">
+                <CakeSlice size={16} /> Cut the cake
               </motion.button>
             )}
             {party && (
