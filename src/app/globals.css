@@ -1,0 +1,365 @@
+@import "tailwindcss";
+
+@theme {
+  --color-plum: #211326;
+  --color-plum-deep: #140a18;
+  --color-burgundy: #47263d;
+  --color-rose: #e8a7b6;
+  --color-gold: #d6b47c;
+  --color-gold-bright: #f3dca8;
+  --color-ivory: #fff9f2;
+  --color-lavender: #b9a5d1;
+
+  --font-serif: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-sans: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
+  --font-hand: var(--font-caveat), "Caveat", cursive;
+}
+
+:root {
+  color-scheme: dark;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body {
+  background: #140a18;
+  color: #fff9f2;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100dvh;
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+}
+
+/* ─── reusable pieces ─── */
+
+.scene {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.gold-text {
+  background: linear-gradient(100deg, #b98d4f 0%, #f3dca8 28%, #fff4d8 45%, #d6b47c 62%, #f3dca8 80%, #b98d4f 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 7s linear infinite;
+}
+
+.glow-text {
+  text-shadow:
+    0 0 18px rgba(243, 220, 168, 0.45),
+    0 0 42px rgba(214, 180, 124, 0.25);
+}
+
+.btn-magic {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 52px;
+  padding: 0.9rem 1.9rem;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #211326;
+  background: linear-gradient(120deg, #c9a066, #f3dca8 45%, #d6b47c 70%, #b98d4f);
+  box-shadow:
+    0 0 0 1px rgba(255, 244, 216, 0.4) inset,
+    0 10px 40px -8px rgba(214, 180, 124, 0.65),
+    0 0 60px -10px rgba(232, 167, 182, 0.5);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  overflow: hidden;
+}
+.btn-magic::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: sweep 3.6s ease-in-out infinite;
+}
+.btn-magic:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+.btn-magic:active {
+  transform: scale(0.97);
+}
+.btn-magic:focus-visible,
+.btn-ghost:focus-visible,
+.focus-ring:focus-visible {
+  outline: 2px solid #f3dca8;
+  outline-offset: 4px;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0.7rem 1.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fff9f2;
+  background: rgba(255, 249, 242, 0.06);
+  border: 1px solid rgba(214, 180, 124, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+.btn-ghost:hover {
+  background: rgba(214, 180, 124, 0.16);
+}
+.btn-ghost:active {
+  transform: scale(0.97);
+}
+
+.paper {
+  background:
+    radial-gradient(120% 80% at 20% 0%, rgba(255, 255, 255, 0.9), transparent 60%),
+    radial-gradient(100% 100% at 100% 100%, rgba(232, 167, 182, 0.18), transparent 60%),
+    linear-gradient(160deg, #fffaf3, #f8ecdc);
+  color: #3a2030;
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(214, 180, 124, 0.35) inset;
+}
+
+.vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(10, 4, 12, 0.75) 100%);
+  z-index: 5;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* ─── keyframes ─── */
+
+@keyframes shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+@keyframes sweep {
+  0%,
+  55% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(1.2deg);
+  }
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+@keyframes petal-fall {
+  0% {
+    transform: translate3d(0, -12vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(var(--drift, 60px), 112vh, 0) rotate(var(--spin, 540deg));
+    opacity: 0;
+  }
+}
+@keyframes wing {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.25);
+  }
+}
+@keyframes flame {
+  0%,
+  100% {
+    transform: scale(1, 1) translateY(0) rotate(-1deg);
+  }
+  25% {
+    transform: scale(0.94, 1.08) translateY(-1px) rotate(2deg);
+  }
+  50% {
+    transform: scale(1.05, 0.95) translateY(0) rotate(-2deg);
+  }
+  75% {
+    transform: scale(0.97, 1.05) translateY(-1px) rotate(1deg);
+  }
+}
+@keyframes smoke {
+  0% {
+    opacity: 0.7;
+    transform: translateY(0) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(2.2) translateX(10px);
+  }
+}
+@keyframes rays {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+@keyframes fog {
+  0% {
+    transform: translateX(-10%);
+  }
+  100% {
+    transform: translateX(10%);
+  }
+}
+@keyframes pulse-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(243, 220, 168, 0.55));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 22px rgba(243, 220, 168, 0.95));
+    transform: scale(1.06);
+  }
+}
+@keyframes leak {
+  0%,
+  100% {
+    transform: translate(-10%, -5%) scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate(12%, 8%) scale(1.25);
+    opacity: 0.6;
+  }
+}
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-floaty {
+  animation: floaty 6s ease-in-out infinite;
+}
+.animate-twinkle {
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2.6s ease-in-out infinite;
+}
+.animate-spin-slow {
+  animation: spin-slow 40s linear infinite;
+}
+
+/* ─── print: only the keepsake card ─── */
+@media print {
+  @page {
+    size: A5 portrait;
+    margin: 0;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  #keepsake-card,
+  #keepsake-card * {
+    visibility: visible !important;
+  }
+  #keepsake-card {
+    position: fixed !important;
+    inset: 0 !important;
+    margin: auto !important;
+    transform: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.12s !important;
+  }
+}
+
+@keyframes lantern-rise {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-2deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate3d(var(--sway, 20px), -60vh, 0) rotate(2deg);
+  }
+  100% {
+    transform: translate3d(calc(var(--sway, 20px) * -0.5), -125vh, 0) rotate(-2deg);
+    opacity: 0.2;
+  }
+}
+@keyframes lantern-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.82;
+  }
+  60% {
+    opacity: 0.95;
+  }
+}
