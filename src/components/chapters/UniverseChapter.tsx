@@ -1,281 +1,368 @@
 "use client";
 
-import { AnimatePresence, motion, type PanInfo } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { AnimatePresence, animate, motion, useMotionValue } from "motion/react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Starfield from "@/components/fx/Starfield";
 import ParticleField from "@/components/fx/ParticleField";
+import Confetti from "@/components/fx/Confetti";
 import SafeImage from "@/components/ui/SafeImage";
 import { useStory } from "@/components/StoryProvider";
-import { birthday } from "@/config/birthday";
-import { heartLayout } from "@/lib/random";
+import { birthday, type FamilyPhoto } from "@/config/birthday";
+import { heartPoint } from "@/lib/random";
 import { useSize } from "@/lib/useSize";
+import { getMusic } from "@/lib/audio";
 
-/** Constellation anchor points as fractions of the sky (portrait friendly). Supports up to 15 photos. */
-const SPOTS = [
-  [0.5, 0.24], [0.22, 0.33], [0.78, 0.34], [0.3, 0.5], [0.7, 0.52], [0.5, 0.64], [0.2, 0.71],
-  [0.8, 0.72], [0.5, 0.42], [0.12, 0.5], [0.88, 0.5], [0.36, 0.8], [0.64, 0.82], [0.35, 0.2], [0.65, 0.2],
-];
+/**
+ * The Universe of Memories: a constellation puzzle.
+ * A dotted heart with empty star-spots glows in the sky; Mom drags (or taps)
+ * each photo-star into a spot. When the pattern is complete, it bursts into
+ * a giant glowing heart.
+ */
+
+const DENSE = 240;
+const FILLERS = 28;
+
+/** Heart outline sampled densely, with cumulative arc length (unit space). */
+const OUTLINE = (() => {
+  const pts = Array.from({ length: DENSE }, (_, i) => heartPoint((i / DENSE) * Math.PI * 2));
+  const cum = [0];
+  for (let i = 1; i <= DENSE; i++) {
+    const a = pts[i - 1];
+    const b = pts[i % DENSE];
+    cum.push(cum[i - 1] + Math.hypot(b.x - a.x, b.y - a.y));
+  }
+  const total = cum[DENSE];
+  /** dense index at a fraction of the total arc length (0 = top dip) */
+  const at = (f: number) => {
+    const target = (((f % 1) + 1) % 1) * total;
+    let i = 0;
+    while (i < DENSE && cum[i + 1] < target) i++;
+    return i % DENSE;
+  };
+  return { pts, at };
+})();
+const SPRING = { type: "spring" as const, stiffness: 220, damping: 24 };
+const HEART_PATH = "M0 22 C -26 4, -32 -16, -18 -24 C -9 -29, -2 -24, 0 -16 C 2 -24, 9 -29, 18 -24 C 32 -16, 26 4, 0 22 Z";
+
+type Pt = { x: number; y: number };
+
+function PhotoStar({
+  photo,
+  index,
+  pos,
+  size,
+  placed,
+  selected,
+  locked,
+  onDrop,
+  onTap,
+}: {
+  photo: FamilyPhoto;
+  index: number;
+  pos: Pt;
+  size: number;
+  placed: boolean;
+  selected: boolean;
+  locked: boolean;
+  onDrop: (i: number, center: Pt) => boolean;
+  onTap: (i: number) => void;
+}) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const prev = useRef(pos);
+
+  // When the resting position changes (snapped into a slot), keep the star
+  // visually where it was dropped, then glide it into place.
+  useLayoutEffect(() => {
+    const dx = prev.current.x - pos.x;
+    const dy = prev.current.y - pos.y;
+    if (dx || dy) {
+      x.set(x.get() + dx);
+      y.set(y.get() + dy);
+      animate(x, 0, SPRING);
+      animate(y, 0, SPRING);
+    }
+    prev.current = pos;
+  }, [pos, x, y]);
+
+  return (
+    <motion.button
+      type="button"
+      className="focus-ring absolute rounded-full"
+      style={{ left: pos.x - size / 2, top: pos.y - size / 2, width: size, height: size, x, y, zIndex: selected ? 30 : placed ? 10 : 20, touchAction: "none" }}
+      drag={!placed && !locked}
+      dragMomentum={false}
+      dragElastic={0.2}
+      whileDrag={{ scale: 1.18 }}
+      onDragEnd={() => {
+        const ok = onDrop(index, { x: pos.x + x.get(), y: pos.y + y.get() });
+        if (!ok) {
+          animate(x, 0, SPRING);
+          animate(y, 0, SPRING);
+        }
+      }}
+      onTap={() => !placed && !locked && onTap(index)}
+      onKeyDown={(e) => {
+        if ((e.key === "Enter" || e.key === " ") && !placed && !locked) {
+          e.preventDefault();
+          onTap(index);
+        }
+      }}
+      initial={{ opacity: 0, scale: 0.3 }}
+      animate={{ opacity: 1, scale: selected ? 1.15 : 1 }}
+      transition={{ opacity: { delay: 0.6 + index * 0.15, duration: 0.8 }, scale: { type: "spring", stiffness: 260, damping: 18 } }}
+      aria-label={placed ? `${photo.alt}, placed in the heart` : `${photo.alt}. Drag it onto an empty star, or select it and then choose a star.`}
+      aria-pressed={selected}
+    >
+      <span
+        className="pointer-events-none absolute inset-[-10px] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(243,220,168,0.6) 0%, transparent 70%)", animation: `twinkle ${3 + (index % 3)}s ease-in-out ${index * 0.3}s infinite` }}
+      />
+      <span className={`pointer-events-none absolute inset-0 overflow-hidden rounded-full border-2 ${selected ? "border-white" : "border-gold-bright"} shadow-[0_0_24px_rgba(243,220,168,0.7)]`}>
+        <SafeImage src={photo.src} alt="" focus={photo.focus} className="h-full w-full" />
+      </span>
+      {selected && <span className="pointer-events-none absolute inset-[-6px] animate-ping rounded-full border-2 border-gold-bright/80" />}
+    </motion.button>
+  );
+}
 
 export default function UniverseChapter() {
   const { next } = useStory();
-  const photos = birthday.photos.slice(0, SPOTS.length);
+  const photos = birthday.photos.slice(0, 12);
+  const n = photos.length;
   const [ref, { w, h }] = useSize<HTMLDivElement>();
-  const [open, setOpen] = useState<number | null>(null);
-  const [seen, setSeen] = useState<Set<number>>(() => new Set());
-  const [formed, setFormed] = useState(false);
-  const [dir, setDir] = useState(0);
+  /** slotOf[photoIndex] = slot index or -1 */
+  const [slotOf, setSlotOf] = useState<number[]>(() => photos.map(() => -1));
+  const [selected, setSelected] = useState<number | null>(null);
+  const [stage, setStage] = useState<"puzzle" | "connect" | "boom">("puzzle");
 
-  const node = Math.max(58, Math.min(92, w * 0.2));
-  const allSeen = seen.size >= photos.length;
-
-  // A dense heart outline: photos sit on evenly spread points, golden stars fill the rest.
-  const HEART_N = 28;
-  const heart = useMemo(() => heartLayout(HEART_N), []);
-  const R = Math.min(w * 0.42, h * 0.28);
-  const heartXY = useCallback((k: number) => ({ x: w / 2 + heart[k].x * R, y: h * 0.44 + heart[k].y * R }), [heart, R, w, h]);
-  const slots = useMemo(() => photos.map((_, i) => Math.round(((i + 0.5) * HEART_N) / photos.length) % HEART_N), [photos]);
-  const positions = useMemo(
-    () => photos.map((_, i) => (formed ? heartXY(slots[i]) : { x: SPOTS[i][0] * w, y: SPOTS[i][1] * h })),
-    [photos, formed, w, h, heartXY, slots],
+  const size = Math.max(50, Math.min(76, w * 0.15));
+  const R = Math.min(w * 0.4, h * 0.25);
+  const cx = w / 2;
+  const cy = h * 0.4;
+  const heartXY = useCallback((k: number): Pt => ({ x: cx + OUTLINE.pts[k].x * R, y: cy + OUTLINE.pts[k].y * R }), [R, cx, cy]);
+  // Spots evenly spaced along the heart (symmetric, with one at the bottom tip for odd counts).
+  const slotPoints = useMemo(() => photos.map((_, i) => OUTLINE.at((i + 0.5) / n)), [photos, n]);
+  const fillerPoints = useMemo(
+    () =>
+      Array.from({ length: FILLERS }, (_, j) => OUTLINE.at(j / FILLERS)).filter((k) =>
+        slotPoints.every((sk) => Math.min(Math.abs(sk - k), DENSE - Math.abs(sk - k)) > 6),
+      ),
+    [slotPoints],
   );
-  const nodeSize = formed ? node * 0.78 : node;
+  const slots = useMemo(() => slotPoints.map(heartXY), [slotPoints, heartXY]);
 
-  const show = useCallback(
-    (i: number, d = 0) => {
-      const n = (i + photos.length) % photos.length;
-      setDir(d);
-      setOpen(n);
-      setSeen((s) => (s.has(n) ? s : new Set(s).add(n)));
-    },
-    [photos.length],
-  );
+  // Photos wait in a softly curved "tray" of stars at the bottom of the sky.
+  const homes = useMemo(() => {
+    const perRow = Math.ceil(n / 2);
+    return photos.map((_, i) => {
+      const row = i < perRow ? 0 : 1;
+      const inRow = row === 0 ? perRow : n - perRow;
+      const col = row === 0 ? i : i - perRow;
+      const span = Math.min(w - size - 24, (inRow - 1) * (size + 18));
+      const x = inRow === 1 ? w / 2 : w / 2 - span / 2 + (col / (inRow - 1)) * span;
+      const y = h * (row === 0 ? 0.735 : 0.835) + Math.sin(col * 1.3) * 6;
+      return { x, y };
+    });
+  }, [photos, n, w, h, size]);
 
-  useEffect(() => {
-    if (open === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(null);
-      if (e.key === "ArrowRight") show(open + 1, 1);
-      if (e.key === "ArrowLeft") show(open - 1, -1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, show]);
+  const placedCount = slotOf.filter((s) => s >= 0).length;
+  const freeSlot = (k: number) => !slotOf.includes(k);
 
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    if (open === null) return;
-    if (info.offset.x < -60 || info.velocity.x < -400) show(open + 1, 1);
-    else if (info.offset.x > 60 || info.velocity.x > 400) show(open - 1, -1);
+  const place = useCallback((i: number, k: number) => {
+    setSlotOf((prev) => {
+      if (prev.includes(k) || prev[i] >= 0) return prev;
+      const nextS = [...prev];
+      nextS[i] = k;
+      if (nextS.every((s) => s >= 0)) {
+        setTimeout(() => setStage("connect"), 500);
+        setTimeout(() => {
+          setStage("boom");
+          getMusic().playBirthdayTune();
+        }, 2600);
+      }
+      return nextS;
+    });
+    setSelected(null);
+    getMusic().chime();
+  }, []);
+
+  const onDrop = (i: number, c: Pt) => {
+    let best = -1;
+    let bestD = Infinity;
+    slots.forEach((s, k) => {
+      if (!freeSlot(k)) return;
+      const d = Math.hypot(s.x - c.x, s.y - c.y);
+      if (d < bestD) {
+        bestD = d;
+        best = k;
+      }
+    });
+    if (best >= 0 && bestD < size * 1.1) {
+      place(i, best);
+      return true;
+    }
+    return false;
   };
 
-  const current = open !== null ? photos[open] : null;
+  const onTap = (i: number) => setSelected((s) => (s === i ? null : i));
+  const done = stage !== "puzzle";
+  const outline = OUTLINE.pts.map((_, k) => heartXY(k));
+  const outlineD = w ? `M${outline.map((p) => `${p.x} ${p.y}`).join(" L")} Z` : "";
 
   return (
     <section className="scene" aria-label="The universe of memories">
       <Starfield />
       <div ref={ref} className="absolute inset-0">
-        {/* golden constellation lines */}
         {w > 0 && (
           <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
             <defs>
-              <filter id="line-glow">
-                <feGaussianBlur stdDeviation="2" result="b" />
+              <filter id="u-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="3" result="b" />
                 <feMerge>
                   <feMergeNode in="b" />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
+              <radialGradient id="u-heart-fill" cx="50%" cy="45%" r="60%">
+                <stop offset="0%" stopColor="#fff4d8" />
+                <stop offset="45%" stopColor="#f3dca8" stopOpacity="0.85" />
+                <stop offset="100%" stopColor="#E8A7B6" stopOpacity="0.55" />
+              </radialGradient>
             </defs>
-            {!formed &&
-              positions.slice(0, -1).map((p, i) => {
-                const q = positions[i + 1];
-                return (
-                  <motion.line
-                    key={`c-${i}`}
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ x1: p.x, y1: p.y, x2: q.x, y2: q.y, pathLength: 1, opacity: 0.45 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ pathLength: { delay: 0.8 + i * 0.25, duration: 1.2 }, opacity: { delay: 0.8 + i * 0.25, duration: 1 } }}
+            {/* the pattern to match: a faint dotted heart */}
+            <motion.path
+              d={outlineD}
+              fill="none"
+              stroke="#f3dca8"
+              strokeWidth={done ? 2 : 1.2}
+              strokeDasharray={done ? "0" : "2 7"}
+              strokeLinecap="round"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: done ? 1 : 0.55 }}
+              transition={{ duration: 1.2 }}
+              filter={done ? "url(#u-glow)" : undefined}
+            />
+            {/* golden lines drawing between the stars */}
+            {stage !== "puzzle" && (
+              <motion.path
+                d={outlineD}
+                fill="none"
+                stroke="#fff4d8"
+                strokeWidth="2.5"
+                filter="url(#u-glow)"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1.8, ease: "easeInOut" }}
+              />
+            )}
+            {/* small filler stars along the outline */}
+            {fillerPoints.map((k) => (
+              <circle key={k} cx={outline[k].x} cy={outline[k].y} r={done ? 2.6 : 1.6} fill="#fff4d8" opacity={done ? 1 : 0.6} filter="url(#u-glow)" />
+            ))}
+            {/* the heart blowing up */}
+            {stage === "boom" && (
+              <g transform={`translate(${cx} ${cy + R * 0.06})`}>
+                <motion.path
+                  d={HEART_PATH}
+                  fill="url(#u-heart-fill)"
+                  initial={{ scale: 0.05, opacity: 0 }}
+                  animate={{ scale: [0.05, (R / 26) * 1.12, R / 26], opacity: [0, 1, 0.92] }}
+                  transition={{ duration: 1.4, times: [0, 0.6, 1], ease: "easeOut" }}
+                  filter="url(#u-glow)"
+                />
+                {[0, 1, 2].map((k) => (
+                  <motion.path
+                    key={k}
+                    d={HEART_PATH}
+                    fill="none"
                     stroke="#f3dca8"
-                    strokeWidth={1}
-                    strokeDasharray="3 5"
-                    filter="url(#line-glow)"
+                    strokeWidth={1.2}
+                    initial={{ scale: R / 26, opacity: 0.9 }}
+                    animate={{ scale: (R / 26) * (2.4 + k * 0.5), opacity: 0 }}
+                    transition={{ duration: 2.2, delay: 0.5 + k * 0.35, repeat: Infinity, repeatDelay: 1.2 }}
                   />
-                );
-              })}
-            {formed &&
-              heart.map((_, k) => {
-                const p = heartXY(k);
-                const q = heartXY((k + 1) % HEART_N);
-                return (
-                  <motion.line
-                    key={`h-${k}`}
-                    x1={p.x}
-                    y1={p.y}
-                    x2={q.x}
-                    y2={q.y}
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 0.9 }}
-                    transition={{ delay: 1.6 + k * 0.05, duration: 0.6 }}
-                    stroke="#f3dca8"
-                    strokeWidth={1.6}
-                    filter="url(#line-glow)"
-                  />
-                );
-              })}
-            {formed &&
-              heart.map((_, k) => {
-                if (slots.includes(k)) return null;
-                const p = heartXY(k);
-                return (
-                  <motion.circle
-                    key={`s-${k}`}
-                    cx={p.x}
-                    cy={p.y}
-                    r={3}
-                    fill="#fff4d8"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ delay: 1.6 + k * 0.05, duration: 2.4, repeat: Infinity }}
-                    filter="url(#line-glow)"
-                  />
-                );
-              })}
+                ))}
+              </g>
+            )}
           </svg>
         )}
+
+        {/* empty star spots (tap targets when a photo is selected) */}
+        {w > 0 &&
+          !done &&
+          slots.map((s, k) =>
+            freeSlot(k) ? (
+              <button
+                key={k}
+                type="button"
+                onClick={() => selected !== null && place(selected, k)}
+                className={`focus-ring absolute rounded-full border-2 border-dashed transition-colors ${selected !== null ? "border-gold-bright bg-gold/15" : "border-gold/50 bg-gold/5"}`}
+                style={{ left: s.x - size / 2, top: s.y - size / 2, width: size, height: size, animation: "twinkle 2.6s ease-in-out infinite" }}
+                aria-label={`Empty star ${k + 1} in the heart${selected !== null ? ": place the selected photo here" : ""}`}
+              />
+            ) : null,
+          )}
 
         {/* photo stars */}
         {w > 0 &&
           photos.map((p, i) => (
-            <motion.button
+            <PhotoStar
               key={p.id}
-              type="button"
-              onClick={() => show(i)}
-              aria-label={`Memory ${i + 1}: ${p.alt}${seen.has(i) ? " (seen)" : ""}`}
-              className="focus-ring absolute left-0 top-0 rounded-full"
-              initial={{ opacity: 0, scale: 0.2, x: positions[i].x - node / 2, y: positions[i].y - node / 2, width: node, height: node }}
-              animate={{ opacity: 1, scale: 1, x: positions[i].x - nodeSize / 2, y: positions[i].y - nodeSize / 2, width: nodeSize, height: nodeSize }}
-              transition={{ opacity: { delay: 0.3 + i * 0.2, duration: 1 }, scale: { delay: 0.3 + i * 0.2, duration: 1 }, default: { duration: 2.2, ease: [0.22, 1, 0.36, 1] } }}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <span
-                className="absolute inset-[-10px] rounded-full"
-                style={{
-                  background: "radial-gradient(circle, rgba(243,220,168,0.55) 0%, transparent 70%)",
-                  animation: `twinkle ${3 + (i % 3)}s ease-in-out ${i * 0.3}s infinite`,
-                }}
-              />
-              <span className={`absolute inset-0 overflow-hidden rounded-full border-2 ${seen.has(i) ? "border-gold-bright" : "border-gold/60"} shadow-[0_0_24px_rgba(243,220,168,0.6)]`}>
-                <SafeImage src={p.src} alt="" focus={p.focus} className="h-full w-full" />
-              </span>
-              {!seen.has(i) && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-gold-bright shadow-[0_0_10px_#f3dca8]" />}
-            </motion.button>
+              photo={p}
+              index={i}
+              pos={slotOf[i] >= 0 ? slots[slotOf[i]] : homes[i]}
+              size={size}
+              placed={slotOf[i] >= 0}
+              selected={selected === i}
+              locked={done}
+              onDrop={onDrop}
+              onTap={onTap}
+            />
           ))}
+
+        {/* flash when it blows up */}
+        <AnimatePresence>
+          {stage === "boom" && (
+            <motion.div
+              className="pointer-events-none absolute inset-0 z-40"
+              style={{ background: "radial-gradient(circle at 50% 40%, rgba(255,249,242,0.95) 0%, rgba(243,220,168,0.5) 25%, transparent 60%)" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 0] }}
+              transition={{ duration: 1.3, times: [0, 0.3, 1] }}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* words */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-center px-6 pb-[calc(var(--safe-bottom)+28px)] text-center">
+      {stage === "boom" && <Confetti count={50} seed={17} />}
+      {stage === "boom" && <ParticleField variant="dust" count={60} intensity={2} />}
+
+      {/* instructions + result */}
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--safe-top)+84px)] z-30 px-6 text-center">
         <AnimatePresence mode="wait">
-          {!formed ? (
-            <motion.div key="hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: 1.5, duration: 1 }} className="flex flex-col items-center">
-              <p className="font-serif text-xl italic text-ivory/90">Every star here is a memory. Tap one.</p>
-              <p className="mt-1 text-[11px] uppercase tracking-[0.3em] text-gold/80">
-                {seen.size} / {photos.length} memories explored
+          {!done && (
+            <motion.div key="hint" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: 0.8, duration: 1 }}>
+              <p className="font-serif text-[1.15rem] italic leading-snug text-ivory/90 sm:text-2xl">Place every memory on the stars to complete the pattern.</p>
+              <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-gold/80">
+                Drag a photo onto a star · {placedCount} / {n}
               </p>
-              {allSeen && (
-                <motion.button
-                  type="button"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onClick={() => setFormed(true)}
-                  className="btn-magic pointer-events-auto mt-4"
-                >
-                  Gather the stars
-                </motion.button>
-              )}
             </motion.div>
-          ) : (
-            <motion.div key="heart" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.2, duration: 1.6 }} className="flex flex-col items-center">
-              <p className="glow-text font-serif text-[1.9rem] italic leading-tight text-ivory sm:text-4xl">Every beautiful memory leads back to you.</p>
-              <motion.button
-                type="button"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 2 }}
-                onClick={next}
-                className="btn-magic pointer-events-auto mt-6"
-              >
+          )}
+        </AnimatePresence>
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center px-6 pb-[calc(var(--safe-bottom)+28px)] text-center">
+        <AnimatePresence>
+          {stage === "boom" && (
+            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6, duration: 1.4 }} className="flex flex-col items-center">
+              <p className="glow-text font-serif text-[1.9rem] italic leading-tight text-ivory [text-shadow:0_2px_16px_rgba(7,4,11,0.95)] sm:text-4xl">Every beautiful memory leads back to you.</p>
+              <motion.button type="button" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 3 }} onClick={next} className="btn-magic pointer-events-auto mt-6">
                 Visit the wishing tree
               </motion.button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-      {formed && <ParticleField variant="dust" count={40} intensity={1.6} />}
-
-      {/* lightbox */}
-      <AnimatePresence>
-        {current && open !== null && (
-          <motion.div
-            className="fixed inset-0 z-[70] flex flex-col items-center justify-center px-5"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Memory ${open + 1} of ${photos.length}`}
-          >
-            <motion.div
-              className="absolute inset-0 bg-[#07040b]/75"
-              style={{ backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
-              onClick={() => setOpen(null)}
-            />
-            <ParticleField variant="dust" count={24} className="z-0" />
-            <AnimatePresence mode="popLayout" custom={dir}>
-              <motion.div
-                key={open}
-                className="relative w-full max-w-md cursor-grab touch-pan-y active:cursor-grabbing"
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.6}
-                onDragEnd={onDragEnd}
-                initial={{ opacity: 0, scale: 0.6, x: dir * 120, filter: "blur(6px)" }}
-                animate={{ opacity: 1, scale: 1, x: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, scale: 0.85, x: dir * -120 }}
-                transition={{ type: "spring", stiffness: 140, damping: 20 }}
-              >
-                <div className="relative rounded-lg p-[3px]" style={{ background: "linear-gradient(135deg,#fff4d8,#d6b47c 40%,#b98d4f 70%,#f3dca8)", boxShadow: "0 0 60px rgba(243,220,168,0.45), 0 30px 80px -20px rgba(0,0,0,0.8)" }}>
-                  <SafeImage src={current.src} alt={current.alt} focus={current.focus} eager className="max-h-[62dvh] w-full rounded-md object-contain bg-[#120a16]" />
-                </div>
-                <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.8 }} className="mt-5 text-center font-serif text-[1.35rem] italic leading-snug text-ivory">
-                  {current.caption}
-                </motion.p>
-              </motion.div>
-            </AnimatePresence>
-            <div className="relative mt-6 flex items-center gap-4">
-              <button type="button" onClick={() => show(open - 1, -1)} className="btn-ghost !px-3" aria-label="Previous memory">
-                <ChevronLeft size={18} />
-              </button>
-              <span className="min-w-[4rem] text-center text-xs tracking-[0.3em] text-gold">
-                {open + 1} / {photos.length}
-              </span>
-              <button type="button" onClick={() => show(open + 1, 1)} className="btn-ghost !px-3" aria-label="Next memory">
-                <ChevronRight size={18} />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpen(null)}
-              className="focus-ring absolute right-4 flex h-11 w-11 items-center justify-center rounded-full border border-gold/40 bg-plum/60 text-ivory"
-              style={{ top: "calc(var(--safe-top) + 68px)" }}
-              aria-label="Close memory"
-            >
-              <X size={18} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </section>
   );
 }
