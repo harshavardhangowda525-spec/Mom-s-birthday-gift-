@@ -169,6 +169,22 @@ export const birthday = {
     "May your year be filled with happiness, love and beautiful moments — just like the ones you have given us.",
 
   hiddenMessage: "In every lifetime, I'd still choose you as my mom.",
+
+  /**
+   * The last surprise: love coupons Mom can scratch and redeem.
+   * These are promises from the sender. Edit them to ones you'll keep!
+   * icon: coffee | home | film | heart | walk | flower
+   */
+  coupons: [
+    { icon: "coffee", title: "Breakfast in Bed", detail: "One breakfast, made and served by me. You just relax." },
+    { icon: "home", title: "A Day Off from Chores", detail: "One whole day where I do all the housework. No arguments!" },
+    { icon: "film", title: "Movie Night, Your Pick", detail: "Your movie, your snacks, and my full attention. No phone." },
+    { icon: "heart", title: "Unlimited Hugs", detail: "Redeemable anytime, anywhere. This coupon never expires." },
+    { icon: "walk", title: "A Walk, Just Us Two", detail: "As long as you like, talking about everything and nothing." },
+    { icon: "flower", title: "Head Massage & Chai", detail: "A relaxing head massage, followed by chai made by me." },
+  ],
+
+  lanternMessage: "No matter how big I grow, I'll always be your little one.",
 };
 
 export type BirthdayConfig = typeof birthday;

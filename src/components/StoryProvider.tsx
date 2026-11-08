@@ -11,6 +11,7 @@ export const CHAPTERS = [
   "cake",
   "finale",
   "keepsake",
+  "coupons",
 ] as const;
 
 export type ChapterId = (typeof CHAPTERS)[number];

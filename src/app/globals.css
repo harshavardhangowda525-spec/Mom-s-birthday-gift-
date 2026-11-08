@@ -334,3 +334,32 @@ body {
     transition-duration: 0.12s !important;
   }
 }
+
+@keyframes lantern-rise {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-2deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate3d(var(--sway, 20px), -60vh, 0) rotate(2deg);
+  }
+  100% {
+    transform: translate3d(calc(var(--sway, 20px) * -0.5), -125vh, 0) rotate(-2deg);
+    opacity: 0.2;
+  }
+}
+@keyframes lantern-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.82;
+  }
+  60% {
+    opacity: 0.95;
+  }
+}

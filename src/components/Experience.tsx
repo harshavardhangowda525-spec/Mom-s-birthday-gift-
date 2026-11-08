@@ -13,6 +13,7 @@ import TreeChapter from "./chapters/TreeChapter";
 import CakeChapter from "./chapters/CakeChapter";
 import FinaleChapter from "./chapters/FinaleChapter";
 import KeepsakeChapter from "./chapters/KeepsakeChapter";
+import CouponsChapter from "./chapters/CouponsChapter";
 
 const VIEWS: Record<ChapterId, React.ComponentType> = {
   gift: GiftChapter,
@@ -23,6 +24,7 @@ const VIEWS: Record<ChapterId, React.ComponentType> = {
   cake: CakeChapter,
   finale: FinaleChapter,
   keepsake: KeepsakeChapter,
+  coupons: CouponsChapter,
 };
 
 const MOODS: Partial<Record<ChapterId, Mood>> = {
@@ -33,6 +35,7 @@ const MOODS: Partial<Record<ChapterId, Mood>> = {
   tree: "ambient",
   cake: "ambient",
   keepsake: "tender",
+  coupons: "ambient",
 };
 
 function Stage() {

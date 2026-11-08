@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { Download, Mail, Printer, RotateCcw, X } from "lucide-react";
+import { Download, Gift, Mail, Printer, RotateCcw, X } from "lucide-react";
 import ParticleField from "@/components/fx/ParticleField";
 import Petals from "@/components/fx/Petals";
 import SafeImage from "@/components/ui/SafeImage";
@@ -27,7 +27,7 @@ function Corner({ className }: { className: string }) {
 }
 
 export default function KeepsakeChapter() {
-  const { restart } = useStory();
+  const { restart, next } = useStory();
   const portrait = portraitPhoto();
   const [letter, setLetter] = useState(false);
   const [secret, setSecret] = useState(false);
@@ -127,6 +127,15 @@ export default function KeepsakeChapter() {
               <Printer size={15} /> Print / PDF
             </button>
           </div>
+          <motion.button
+            type="button"
+            onClick={next}
+            className="btn-magic mt-2 w-full"
+            animate={{ scale: [1, 1.04, 1] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Gift size={16} /> Wait… there’s one more gift
+          </motion.button>
           <button type="button" onClick={restart} className="btn-ghost w-full">
             <RotateCcw size={15} /> Relive the magic
           </button>

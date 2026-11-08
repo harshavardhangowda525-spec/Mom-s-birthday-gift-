@@ -287,6 +287,20 @@ class MusicEngine {
     });
   }
 
+  /** A small sparkling chime (used when a gift is revealed). */
+  chime() {
+    if (this.muted) return;
+    const ctx = this.ensureCtx();
+    if (!ctx || !this.master) return;
+    void ctx.resume();
+    if (this.useFile || !this.started) {
+      this.master.gain.cancelScheduledValues(ctx.currentTime);
+      this.master.gain.setValueAtTime(0.4, ctx.currentTime);
+    }
+    const t = ctx.currentTime + 0.02;
+    [84, 88, 91, 96].forEach((m, i) => this.bell(midiToHz(m), t + i * 0.09, 0.14));
+  }
+
   /** Plays the traditional birthday melody as a music box over the music. */
   playBirthdayTune() {
     if (this.muted) return;

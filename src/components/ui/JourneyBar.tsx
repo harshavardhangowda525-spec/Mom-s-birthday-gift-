@@ -13,6 +13,7 @@ export const CHAPTER_TITLES: Record<ChapterId, string> = {
   cake: "Make a Wish, Mom",
   finale: "The Grand Finale",
   keepsake: "A Little Piece of Forever",
+  coupons: "One Last Surprise",
 };
 
 export default function JourneyBar() {
