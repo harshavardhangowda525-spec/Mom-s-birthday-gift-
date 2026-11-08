@@ -1,0 +1,7 @@
+:HL["/Mom-s-birthday-gift-/_next/static/chunks/0oot4azxowvxm.css","style"]
+:HL["/Mom-s-birthday-gift-/_next/static/media/01d6212a423b17a1-s.p.1pvupmngxrt5z.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/Mom-s-birthday-gift-/_next/static/media/3679aa72a9b9035f-s.p.0h6ig86gwutp4.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/Mom-s-birthday-gift-/_next/static/media/660acf689794c992-s.p.2_mbdogr7ni8i.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/Mom-s-birthday-gift-/_next/static/media/6f3ab718e3727c1a-s.p.3huc2loe0ie8a.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+1:[["children",{"s":"__PAGE__","h":160}]]
+0:{"b":"En1pbEfomr3Z-3QHx85rB","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
