@@ -1,6 +1,7 @@
 "use client";
 
 import { birthday, portraitPhoto } from "@/config/birthday";
+import { withBase } from "./basePath";
 
 const W = 1200;
 const H = 1680;
@@ -136,7 +137,7 @@ export async function renderKeepsake(): Promise<Blob | null> {
 
   // arched photo
   const photo = portraitPhoto();
-  const img = photo ? await loadImage(photo.src) : null;
+  const img = photo ? await loadImage(withBase(photo.src)) : null;
   const pw = 640;
   const ph = 760;
   const px = (W - pw) / 2;

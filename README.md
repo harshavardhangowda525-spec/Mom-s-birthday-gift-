@@ -22,14 +22,15 @@ Everything personal lives in **`src/config/birthday.ts`**: names, date, photo ca
 - **Music**: put a licensed instrumental at `public/audio/birthday-music.mp3`. If it's missing, the site plays an original music-box melody generated in the browser. Music only starts after the first tap, and the top-right controls pause, mute and replay it.
 - **Film**: scene order, photos and timings are in `SCENES` in `src/components/finale/CinematicFilm.tsx`.
 
-## Run
+## Live site (GitHub Pages)
+
+**https://harshavardhangowda525-spec.github.io/Mom-s-birthday-gift-/**
+
+Every push to `main` or `claude/friendly-knuth-5q2aj1` runs `.github/workflows/deploy-pages.yml`. The workflow builds the static site and publishes it to the `gh-pages` branch, which GitHub Pages serves (Settings → Pages → Deploy from a branch → `gh-pages` / root).
+
+## Run locally
 
 ```bash
 npm install
 npm run dev      # http://localhost:3000
-npm run build && npm start
 ```
-
-## Deploy
-
-Import the repository on [Vercel](https://vercel.com/new). There are no environment variables, database or backend, so the default Next.js settings work as they are.

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Heart } from "lucide-react";
+import { withBase } from "@/lib/basePath";
 
 type Props = {
   src: string;
@@ -31,7 +32,7 @@ export default function SafeImage({ src, alt, className = "", style, focus, eage
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={withBase(src)}
       alt={alt}
       loading={eager ? "eager" : "lazy"}
       decoding="async"

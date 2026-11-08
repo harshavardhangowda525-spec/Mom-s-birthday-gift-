@@ -1,6 +1,7 @@
 "use client";
 
 import { birthday } from "@/config/birthday";
+import { withBase } from "./basePath";
 
 /**
  * Music engine.
@@ -123,7 +124,7 @@ class MusicEngine {
     };
 
     if (cfg.src) {
-      const audio = new Audio(cfg.src);
+      const audio = new Audio(withBase(cfg.src));
       audio.loop = true;
       audio.volume = 0;
       audio.preload = "auto";
