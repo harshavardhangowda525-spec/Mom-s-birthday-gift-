@@ -20,6 +20,8 @@ const STORE = "magic-of-you:redeemed";
 function ScratchLayer({ onReveal, label }: { onReveal: () => void; label: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const done = useRef(false);
+  /** true on laptops/desktops (mouse or trackpad): scratch by simply hovering */
+  const fine = useRef(false);
   const moves = useRef(0);
   const last = useRef<{ x: number; y: number } | null>(null);
 
@@ -28,6 +30,7 @@ function ScratchLayer({ onReveal, label }: { onReveal: () => void; label: string
     if (!c) return;
     const ctx = c.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
+    fine.current = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     const r = c.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     c.width = r.width * dpr;
@@ -55,7 +58,7 @@ function ScratchLayer({ onReveal, label }: { onReveal: () => void; label: string
     ctx.font = `600 22px ${serif}, Georgia, serif`;
     ctx.fillText("✦ Scratch here ✦", r.width / 2, r.height / 2 - 4);
     ctx.font = `500 11px system-ui, sans-serif`;
-    ctx.fillText("to reveal your gift", r.width / 2, r.height / 2 + 18);
+    ctx.fillText(fine.current ? "just move your cursor over the gold" : "rub with your finger to reveal", r.width / 2, r.height / 2 + 18);
   }, []);
 
   const check = useCallback(() => {
@@ -69,13 +72,13 @@ function ScratchLayer({ onReveal, label }: { onReveal: () => void; label: string
       total++;
       if (data[i] < 40) clear++;
     }
-    if (clear / total > 0.45) {
+    if (clear / total > 0.35) {
       done.current = true;
       onReveal();
     }
   }, [onReveal]);
 
-  const scratch = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const scratch = (e: React.PointerEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>, burst = false) => {
     const c = ref.current;
     const ctx = c?.getContext("2d", { willReadFrequently: true });
     if (!c || !ctx || done.current) return;
@@ -85,7 +88,13 @@ function ScratchLayer({ onReveal, label }: { onReveal: () => void; label: string
     ctx.globalCompositeOperation = "destination-out";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.lineWidth = 38;
+    ctx.lineWidth = fine.current ? 60 : 44;
+    if (burst) {
+      // a click clears a generous circle
+      ctx.beginPath();
+      ctx.arc(x, y, 55, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.beginPath();
     const p = last.current ?? { x, y };
     ctx.moveTo(p.x, p.y);
@@ -109,7 +118,18 @@ function ScratchLayer({ onReveal, label }: { onReveal: () => void; label: string
         scratch(e);
       }}
       onPointerMove={(e) => {
-        if (e.buttons || e.pointerType === "touch") scratch(e);
+        // touch: while the finger is down · mouse/trackpad: just hovering scratches
+        if (e.pointerType !== "touch" || e.buttons) scratch(e);
+      }}
+      onPointerLeave={() => {
+        last.current = null;
+        check();
+      }}
+      onClick={(e) => {
+        if (fine.current) {
+          scratch(e, true);
+          check();
+        }
       }}
       onPointerUp={() => {
         last.current = null;
@@ -389,7 +409,15 @@ export default function CouponsChapter() {
               </AnimatePresence>
             </div>
 
-            <div className="mt-5 flex items-center gap-4">
+            <div className="mt-2 min-h-[36px]">
+              {!revealed.has(i) && (
+                <button type="button" onClick={() => reveal(i)} className="focus-ring rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-gold-bright/90 underline decoration-gold/40 underline-offset-4 hover:text-gold-bright">
+                  Or just reveal it ✨
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 flex items-center gap-4">
               <button type="button" onClick={() => go(-1)} className="btn-ghost !px-3" aria-label="Previous coupon">
                 <ChevronLeft size={18} />
               </button>
